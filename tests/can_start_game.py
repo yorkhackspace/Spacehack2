@@ -14,10 +14,10 @@ c.connect()
 
 done = False
 
-def start(client, userdata, message):
+def start(topic, payload):
     global done
     print("Start game")
-    assert message.payload.decode('utf-8') == '2'
+    assert payload == '2'
     done = True
 
 c.sub('spacehack/start', start)

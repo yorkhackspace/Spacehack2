@@ -4,6 +4,7 @@ import signal
 import sys
 from GameStarter.gamestart import GameStarter
 import time
+from functools import wraps
 
 class MqttWrapper:
     def __init__(self, address='localhost', port=1883):
@@ -25,13 +26,20 @@ class MqttWrapper:
 
     def sub(self, topic, callback):
         self.mqtt.subscribe(topic)
-        self.mqtt.message_callback_add(topic, callback)
+        wrapped_callback = self.wrap_message_handler(callback)
+        self.mqtt.message_callback_add(topic, wrapped_callback)
+
+    def wrap_message_handler(self, callback):
+        @wraps(callback)
+        def message_handler_wrapper(client, userdata, message):
+            return callback(message.topic, message.payload.decode('utf-8'))
+        return message_handler_wrapper
 
     def pub(self, topic, payload):
         self.mqtt.publish(topic, payload)
 
-    def dump(self, client, userdata, message):
-        print("%s: %s" % (message.topic, message.payload.decode('utf-8')))
+    def dump(self, topic, payload):
+        print("%s: %s" % (topic, payload))
 
 class SpacehackHost:
 
@@ -41,10 +49,9 @@ class SpacehackHost:
     def test_topic(self, client, userdata, message):
         print(message)
 
-    def handle_lobby_join(self, client, userdata, message):
-        _, console, *_ = message.topic.split('/')
+    def handle_lobby_join(self, topic, payload):
+        _, console, *_ = topic.split('/')
         player_index = int(console)
-        payload = message.payload.decode('utf-8')
         print("Player %d: %s" % (player_index, payload))
         if payload == '1':
             self.g.push(player_index)
