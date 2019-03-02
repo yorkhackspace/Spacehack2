@@ -2,7 +2,7 @@
 from paho.mqtt import client as mqtt
 import signal
 import sys
-from GameStarter.gamestart import GameStarter
+from GameStarter import GameStarter
 import time
 from functools import wraps
 
