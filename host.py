@@ -9,9 +9,9 @@ class MqttWrapper:
     def __init__(self, address='localhost', port=1883):
         self.address = address
         self.port = port
-        
+
     def on_connect(self, client, userdata, flags, rc):
-        print("connected to mqqtt")
+        print("connected to mqtt")
 
     def connect(self):
         self.mqtt = mqtt.Client()
