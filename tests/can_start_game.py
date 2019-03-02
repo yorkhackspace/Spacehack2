@@ -1,10 +1,7 @@
 # RUN: python %s
 
-import sys
-import time
-import threading
+from libs.test_utils import TimeoutTest
 from host import SpacehackHost, MqttWrapper
-from paho.mqtt import client as mqtt
 
 sh = SpacehackHost()
 sh.main()
@@ -12,21 +9,20 @@ sh.main()
 c = MqttWrapper()
 c.connect()
 
-done = False
+test = TimeoutTest()
 
 def start(topic, payload):
-    global done
-    print("Start game")
+    """ Handler for start topic messages """
+    # Check that two players are joined
     assert payload == '2'
-    done = True
+    # Test has passed
+    test.passed()
 
-c.sub('spacehack/start', start)
+def act():
+    # Register handler
+    c.sub('spacehack/start', start)
+    # Simulate players joining
+    c.pub('spacehack/1/join', '1')
+    c.pub('spacehack/2/join', '1')
 
-threading.Thread(target=sh.gamestart_loop).start()
-
-c.pub('spacehack/1/join', '1')
-c.pub('spacehack/2/join', '1')
-
-time.sleep(15)
-if not done:
-    sys.exit(1)
+test.run(sh.gamestart_loop, act)

@@ -1,0 +1,24 @@
+dist: xenial
+language: python
+python:
+ - "3.6"
+
+addons:
+  apt:
+    packages:
+    - python3-dev
+    - mosquitto
+
+install:
+  - pip install -r requirements.txt
+  #- pip install coveralls
+
+# TODO get coverage reports
+#script: 
+#  coverage run --source=foo.py program.py 
+
+#after_success:
+#  coveralls --rcfile=.coveragerc
+
+script:
+    ./tests.sh --verbose --timeout 60

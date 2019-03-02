@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-lit -j1 tests/
+lit -j1 $@ tests/

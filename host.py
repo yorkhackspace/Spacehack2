@@ -66,8 +66,8 @@ class SpacehackHost:
 
     def gamestart_loop(self):
         while(not self.g.shouldStart()):
-            time.sleep(0.05)
-            self.g.timeStep(0.05)
+            time.sleep(0.5)
+            self.g.timeStep(0.5)
         self.mqtt.pub('spacehack/start', self.g.totalStartablePlayers())
         print("Total startable players: %d" % self.g.totalStartablePlayers())
 
