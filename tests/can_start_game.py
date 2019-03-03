@@ -14,7 +14,7 @@ test = TimeoutTest()
 def start(topic, payload):
     """ Handler for start topic messages """
     # Check that two players are joined
-    assert payload == '2'
+    assert len(payload.split(',')) == 2
     # Test has passed
     test.passed()
 

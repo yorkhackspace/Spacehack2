@@ -56,26 +56,25 @@ class SpacehackHost:
 
     def handle_lobby_join(self, topic, payload):
         _, console, *_ = topic.split('/')
-        player_index = int(console)
-        print("Player %d: %s" % (player_index, payload))
+        print("Player %s: %s" % (console, payload))
         if payload == '1':
-            self.g.push(player_index)
+            self.g.player(console).push()
         elif payload == '0':
-            self.g.release(player_index)
+            self.g.player(console).release()
 
     def main(self):
         self.mqtt.connect()
         self.mqtt.sub('test', self.test_topic)
         lc = LobbyConfiguration
-        self.g = GameStarter(4, lc.JOIN_GAME_DELAY, lc.GAME_START_DELAY, lc.LEAVE_GAME_DELAY)
+        self.g = GameStarter(lc.GAME_START_DELAY, lc.JOIN_GAME_DELAY, lc.LEAVE_GAME_DELAY)
         self.mqtt.sub('spacehack/+/join', self.handle_lobby_join)
 
     def gamestart_loop(self):
-        while(not self.g.shouldStart()):
+        while(not self.g.should_start):
             time.sleep(0.5)
-            self.g.timeStep(0.5)
-        self.mqtt.pub('spacehack/start', self.g.totalStartablePlayers())
-        print("Total startable players: %d" % self.g.totalStartablePlayers())
+            self.g.step_time(0.5)
+        self.mqtt.pub('spacehack/start', ','.join(self.g.joined_players))
+        print("Total startable players: %d" % len(self.g.joined_players))
 
     def stop(self):
         self.mqtt.stop()
