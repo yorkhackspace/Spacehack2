@@ -1,15 +1,15 @@
 # RUN: python %s
 
 from libs.test_utils import TimeoutTest
-from host import SpacehackHost, MqttWrapper
+from host import Lobby, MqttWrapper
 
-sh = SpacehackHost()
-sh.main()
+l = Lobby(MqttWrapper())
+service = l.get_service()
 
 c = MqttWrapper()
 c.connect()
 
-test = TimeoutTest()
+test = TimeoutTest(10.0)
 
 def start(topic, payload):
     """ Handler for start topic messages """
@@ -22,7 +22,13 @@ def act():
     # Register handler
     c.sub('spacehack/start', start)
     # Simulate players joining
+    service.wait(0.1)
     c.pub('spacehack/1/join', '1')
     c.pub('spacehack/2/join', '1')
 
-test.run(sh.gamestart_loop, act)
+def run_unit():
+    service.start()
+    service.wait(6.0)
+    service.stop()
+
+test.run(run_unit, act)
