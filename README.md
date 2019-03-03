@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/yorkhackspace/Spacehack2Host.svg?branch=master)](https://travis-ci.org/yorkhackspace/Spacehack2Host)
 # Spacehack 2
 
 This is a rewrite of the code that runs spacehack.
