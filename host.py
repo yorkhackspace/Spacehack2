@@ -6,6 +6,11 @@ from GameStarter import GameStarter
 import time
 from functools import wraps
 
+class LobbyConfiguration:
+    GAME_START_DELAY = 5.0
+    JOIN_GAME_DELAY = 1.0
+    LEAVE_GAME_DELAY = 0.5
+
 class MqttWrapper:
     def __init__(self, address='localhost', port=1883):
         self.address = address
@@ -61,7 +66,8 @@ class SpacehackHost:
     def main(self):
         self.mqtt.connect()
         self.mqtt.sub('test', self.test_topic)
-        self.g = GameStarter(4, 2.0, 5.0, 1.0)
+        lc = LobbyConfiguration
+        self.g = GameStarter(4, lc.JOIN_GAME_DELAY, lc.GAME_START_DELAY, lc.LEAVE_GAME_DELAY)
         self.mqtt.sub('spacehack/+/join', self.handle_lobby_join)
 
     def gamestart_loop(self):
