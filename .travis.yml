@@ -11,14 +11,10 @@ addons:
 
 install:
   - pip install -r requirements.txt
-  #- pip install coveralls
-
-# TODO get coverage reports
-#script: 
-#  coverage run --source=foo.py program.py 
-
-#after_success:
-#  coveralls --rcfile=.coveragerc
+  - pip install coveralls
 
 script:
     ./tests.sh --verbose --timeout 60
+
+after_success:
+  coveralls
