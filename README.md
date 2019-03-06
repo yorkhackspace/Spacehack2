@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/yorkhackspace/Spacehack2Host.svg?branch=master)](https://travis-ci.org/yorkhackspace/Spacehack2Host)
+[![Coverage Status](https://coveralls.io/repos/github/yorkhackspace/Spacehack2Host/badge.svg?branch=master)](https://coveralls.io/github/yorkhackspace/Spacehack2Host?branch=master)
+
 # Spacehack 2
 
 This is a rewrite of the code that runs spacehack.
