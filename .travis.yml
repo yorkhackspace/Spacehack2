@@ -14,7 +14,7 @@ install:
   - pip install coveralls
 
 script:
-    ./tests/bin/run_all_spacehack_tests --verbose --timeout 60
+    ./tests/bin/run_all_spacehack_tests -- --verbose --timeout 60
 
 after_success:
   coveralls
