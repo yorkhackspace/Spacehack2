@@ -1,4 +1,4 @@
-# RUN: ./bin/test_coverage.sh %s
+# RUN: ./tbin/test_coverage.sh %s
 
 from libs.test_utils import TimeoutTest
 from host import Lobby, MqttWrapper

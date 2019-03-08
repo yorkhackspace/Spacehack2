@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -e
+
+subdir_name=tests
+testdir=.
+
+if [ "$1" == "--help" ]; then
+    echo "Usage:"
+    echo -e "\t$0 [run_root] [-- <lit arguments>]"
+    echo
+    echo "Where run_root is the name of the direcrtory containing the test suite in a subdirectory called '$subdir_name' (default '.')"
+    exit 0
+fi
+
+otherargs=${@:2}
+
+if [ "$1" != "" ] && [ "$1" != "--" ]; then
+    testdir=$1
+    otherargs=${@:3}
+fi
+
+subdir=$testdir/$subdir_name
+
+if [ -d $subdir ]; then
+    echo "Test directory is '$subdir'"
+else
+    echo "Couldn't find directory '$subdir'. Run this from the directory containing '$subdir_name', or specify the path to the directory containing '$subdir_name' "
+    exit 1
+fi
+
+pushd $testdir > /dev/null
+rm -f $subdir_name/.coverage # Clear previous coverage report
+lit -j1 $otherargs $subdir_name/
+cp $subdir_name/.coverage .coverage
+popd > /dev/null
