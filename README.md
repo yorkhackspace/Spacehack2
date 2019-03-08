@@ -41,7 +41,9 @@ First make sure your mqtt broker is running.
 
 You can then check if everything worked with:
 
-`./tests.sh`
+`./tests/bin/run_all_spacehack_tests`
+
+More details on test scripts in the `tests/bin/README.md`
 
 And you can run the host in the same way:
 
