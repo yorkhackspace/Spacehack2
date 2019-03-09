@@ -2,3 +2,4 @@ paho-mqtt>=1.4.0
 lit>=0.7.1
 game-starter>=2.0.0,<3
 psutil==5.5.1
+coverage>=4.5.2
