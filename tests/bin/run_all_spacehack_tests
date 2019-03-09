@@ -31,6 +31,6 @@ fi
 
 pushd $testdir > /dev/null
 rm -f $subdir_name/.coverage # Clear previous coverage report
-lit -j1 $otherargs $subdir_name/
+lit $otherargs $subdir_name/
 cp $subdir_name/.coverage .coverage
 popd > /dev/null

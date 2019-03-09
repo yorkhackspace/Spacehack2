@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 from paho.mqtt import client as mqtt
 import signal
 import sys
@@ -13,9 +14,14 @@ class LobbyConfiguration:
     LEAVE_GAME_DELAY = 0.5
 
 class MqttWrapper:
-    def __init__(self, address='localhost', port=1883):
+    def __init__(self, address='localhost', port=1883, topic_prefix='spacehack/'):
         self.address = address
         self.port = port
+        self.topic_prefix = topic_prefix
+        override = 'SH_TOPIC_PREFIX_OVERRIDE'
+        if override in os.environ:
+            prefix = os.environ[override]
+            self.topic_prefix = ''.join(c if c not in '\/.#$+_' else '-' for c in os.environ[override]) + '/'
 
     def on_connect(self, client, userdata, flags, rc):
         print("connected to mqtt")
@@ -31,9 +37,11 @@ class MqttWrapper:
         self.mqtt.disconnect()
 
     def sub(self, topic, callback):
-        self.mqtt.subscribe(topic)
+        print('sub', topic)
+        full_topic = self.topic_prefix + topic
+        self.mqtt.subscribe(full_topic)
         wrapped_callback = self.wrap_message_handler(callback)
-        self.mqtt.message_callback_add(topic, wrapped_callback)
+        self.mqtt.message_callback_add(full_topic, wrapped_callback)
 
     def wrap_message_handler(self, callback):
         @wraps(callback)
@@ -42,7 +50,8 @@ class MqttWrapper:
         return message_handler_wrapper
 
     def pub(self, topic, payload):
-        self.mqtt.publish(topic, payload)
+        print('pub', topic)
+        self.mqtt.publish(self.topic_prefix + topic, payload)
 
     def dump(self, topic, payload):
         print("%s: %s" % (topic, payload))
@@ -50,6 +59,7 @@ class MqttWrapper:
 class Service:
     def __init__(self, func, args, kwargs):
         self.stopped = Event()
+        self.init_done = Event()
         self.func = func
         self.args = args
         self.kwargs = kwargs
@@ -57,12 +67,15 @@ class Service:
     def stop(self):
         self.stopped.set()
 
+    def await_init_done(self):
+        self.init_done.wait()
+
     def wait(self, *args):
         self.svc_thread.join(*args)
 
     def start(self):
         def run():
-            self.func(*self.args, self.stopped, **self.kwargs)
+            self.func(*self.args, self.stopped, self.init_done, **self.kwargs)
         self.svc_thread = Thread(target=run)
         self.svc_thread.start()
 
@@ -88,17 +101,18 @@ class Lobby:
             print('Unknown payload "%s" on "%s"' %(payload, topic))
 
     @service
-    def get_service(self, stop_event):
+    def get_service(self, stop_event, init_done_event):
         self.mqtt.connect()
         lc = LobbyConfiguration
         self.gamestarter = GameStarter(lc.GAME_START_DELAY, lc.JOIN_GAME_DELAY, lc.LEAVE_GAME_DELAY)
-        self.mqtt.sub('spacehack/+/join', self.handle_join)
+        self.mqtt.sub('+/join', self.handle_join)
+        init_done_event.set()
 
         while(not stop_event.isSet()):
             stop_event.wait(0.05)
             self.gamestarter.step_time(0.05)
             if(self.gamestarter.should_start):
-                self.mqtt.pub('spacehack/start', ','.join(self.gamestarter.joined_players))
+                self.mqtt.pub('start', ','.join(self.gamestarter.joined_players))
                 self.gamestarter.reset()
 
 class SpacehackHost:

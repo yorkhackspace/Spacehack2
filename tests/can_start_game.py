@@ -1,4 +1,4 @@
-# RUN: ./tbin/test_coverage.sh %s
+# RUN: ./tbin/test_coverage.sh %s %t
 
 from libs.test_utils import TimeoutTest
 from host import Lobby, MqttWrapper
@@ -20,11 +20,12 @@ def start(topic, payload):
 
 def act():
     # Register handler
-    c.sub('spacehack/start', start)
+    c.sub('start', start)
+    service.await_init_done()
     # Simulate players joining
     service.wait(0.1)
-    c.pub('spacehack/1/join', '1')
-    c.pub('spacehack/2/join', '1')
+    c.pub('1/join', '1')
+    c.pub('2/join', '1')
     test.await_completion()
     service.stop()
 
