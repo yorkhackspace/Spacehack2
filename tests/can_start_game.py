@@ -4,7 +4,6 @@ from libs.test_utils import TimeoutTest
 from host import Lobby, MqttWrapper
 
 l = Lobby(MqttWrapper())
-service = l.get_service()
 
 c = MqttWrapper()
 c.connect()
@@ -21,17 +20,12 @@ def start(topic, payload):
 def act():
     # Register handler
     c.sub('start', start)
-    service.await_init_done()
+    l.await_init_done()
     # Simulate players joining
-    service.wait(0.1)
+    l.wait(0.1)
     c.pub('1/join', '1')
     c.pub('2/join', '1')
     test.await_completion()
-    service.stop()
+    l.stop()
 
-def run_unit():
-    service.start()
-    service.wait(6.0)
-    service.stop()
-
-test.run(run_unit, act)
+test.run(l.start, act)
