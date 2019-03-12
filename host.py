@@ -8,7 +8,7 @@ import time
 from functools import wraps
 from threading import Event, Thread
 
-class LobbyConfiguration:
+class SpacehackConfiguration:
     GAME_START_DELAY = 5.0
     JOIN_GAME_DELAY = 1.0
     LEAVE_GAME_DELAY = 0.5
@@ -64,8 +64,8 @@ class Lobby(Service):
 
     def init(self):
         self.mqtt.connect()
-        lc = LobbyConfiguration
-        self.gamestarter = GameStarter(lc.GAME_START_DELAY, lc.JOIN_GAME_DELAY, lc.LEAVE_GAME_DELAY)
+        sc = SpacehackConfiguration
+        self.gamestarter = GameStarter(sc.GAME_START_DELAY, sc.JOIN_GAME_DELAY, sc.LEAVE_GAME_DELAY)
         self.mqtt.sub('+/join', self.handle_join)
 
     def run(self):
