@@ -28,12 +28,23 @@ class Service:
     def wait(self, *args):
         self.svc_thread.join(*args)
 
+    def init(self):
+        # Some services might not need to do setup, so it's OK not to override
+        pass
+
     def run(self):
         raise Exception("Service.run(): Implement this in subclass")
 
-    def start(self):
-        self.svc_thread = Thread(target=self.run)
+    def service_thread(self):
+        self.init()
+        self.init_done.set()
+        self.run()
+
+    def start(self, synchronous_init=False):
+        self.svc_thread = Thread(target=self.service_thread)
         self.svc_thread.start()
+        if synchronous_init:
+            self.await_init_done()
 
 class Lobby(Service):
     def __init__(self, mqtt):
@@ -51,13 +62,13 @@ class Lobby(Service):
         else:
             print('Unknown payload "%s" on "%s"' %(payload, topic))
 
-    def run(self):
+    def init(self):
         self.mqtt.connect()
         lc = LobbyConfiguration
         self.gamestarter = GameStarter(lc.GAME_START_DELAY, lc.JOIN_GAME_DELAY, lc.LEAVE_GAME_DELAY)
         self.mqtt.sub('+/join', self.handle_join)
-        self.init_done.set()
 
+    def run(self):
         while(not self.stopped.isSet()):
             self.stopped.wait(0.05)
             self.gamestarter.step_time(0.05)
