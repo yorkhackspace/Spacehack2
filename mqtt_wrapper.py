@@ -5,8 +5,8 @@ from paho.mqtt import client as mqtt
 # I dunno Bart, my dad's a really big wheel down at the WrapperFactory
 class MqttWrapperFactory:
     def __init__(self, address='localhost', port=1883, topic_prefix=''):
-        def new():
-            return MqttWrapper(address, port, topic_prefix)
+        def new(subtopic=''):
+            return MqttWrapper(address, port, topic_prefix + subtopic)
         self.new = new
 
 class MqttWrapper:

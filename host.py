@@ -22,7 +22,31 @@ class SpacehackFactory:
     def mqtt_factory():
         return MqttWrapperFactory(topic_prefix=SpacehackConfiguration.root_topic())
 
+    def game_starter():
+        sc = SpacehackConfiguration
+        return GameStarter(sc.GAME_START_DELAY, sc.JOIN_GAME_DELAY, sc.LEAVE_GAME_DELAY)
+
 class Service:
+    running_services = []
+
+    @classmethod
+    def register(cls, service):
+        cls.running_services.append(service)
+
+    @classmethod
+    def deregister(cls, service):
+        cls.running_services.remove(service)
+
+    @classmethod
+    def stop_all(cls):
+        for service in cls.running_services:
+            service.stop()
+
+    @classmethod
+    def wait_all(cls):
+        for service in cls.running_services:
+            service.wait()
+
     def __init__(self):
         self.stopped = Event()
         self.init_done = Event()
@@ -36,6 +60,11 @@ class Service:
     def wait(self, *args):
         self.svc_thread.join(*args)
 
+    def sleep(self, time):
+        self.stopped.wait(time)
+        if self.stopped.isSet():
+            raise Exception('Service stopped')
+
     def init(self):
         # Some services might not need to do setup, so it's OK not to override
         pass
@@ -43,10 +72,19 @@ class Service:
     def run(self):
         raise Exception("Service.run(): Implement this in subclass")
 
+    def cleanup(self):
+        # Some services might not need to clean up, so it's OK not to override
+        pass
+
     def service_thread(self):
+        Service.register(self)
         self.init()
         self.init_done.set()
-        self.run()
+        try:
+            self.run()
+        finally:
+            self.cleanup()
+        Service.deregister(self)
 
     def start(self, synchronous_init=False):
         self.svc_thread = Thread(target=self.service_thread)
@@ -72,17 +110,37 @@ class Lobby(Service):
 
     def init(self):
         self.mqtt.connect()
-        sc = SpacehackConfiguration
-        self.gamestarter = GameStarter(sc.GAME_START_DELAY, sc.JOIN_GAME_DELAY, sc.LEAVE_GAME_DELAY)
+        self.gamestarter = SpacehackFactory.game_starter()
         self.mqtt.sub('+/join', self.handle_join)
 
     def run(self):
         while(not self.stopped.isSet()):
-            self.stopped.wait(0.05)
+            self.sleep(0.05)
             self.gamestarter.step_time(0.05)
             if(self.gamestarter.should_start):
+                # TODO: Start a GameRunner service, wait for init
                 self.mqtt.pub('start', ','.join(self.gamestarter.joined_players))
                 self.gamestarter.reset()
+
+    def cleanup(self):
+        self.mqtt.stop()
+
+class GameRunner(Service):
+    def __init__(self, mqtt_factory, game_subtopic):
+        super(GameRunner, self).__init__()
+        self.mqtt = mqtt_factory.new(game_subtopic)
+
+    def init(self):
+        self.mqtt.connect()
+        self.mqtt.sub('+/ready')
+
+    def run(self):
+        self.mqtt.pub('splash/text', '***** SPACEHACK *****')
+        self.sleep(4.0)
+        self.mqtt.pub('splash/text', 'Wheeeeeeeeeeeeee')
+        self.sleep(10.0)
+
+    def cleanup(self):
         self.mqtt.stop()
 
 class SpacehackHost:
@@ -91,14 +149,14 @@ class SpacehackHost:
         self.lobby = Lobby(self.mqtt_factory)
 
     def stop(self):
-        self.lobby.stop()
-        self.lobby.wait(10.0)
+        Service.stop_all()
+        Service.wait_all()
 
     def start(self):
         self.lobby.start()
 
     def wait(self):
-        self.lobby.wait()
+        Service.wait_all()
 
 
 if __name__ == '__main__':
