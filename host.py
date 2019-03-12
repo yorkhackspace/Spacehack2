@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 from paho.mqtt import client as mqtt
-from mqtt_wrapper import MqttWrapper
+from mqtt_wrapper import MqttWrapperFactory
 import signal
 import sys
 from GameStarter import GameStarter
 import time
 from functools import wraps
 from threading import Event, Thread
+import os
 
 class SpacehackConfiguration:
     GAME_START_DELAY = 5.0
     JOIN_GAME_DELAY = 1.0
     LEAVE_GAME_DELAY = 0.5
 
+    def root_topic():
+        env_topic = os.environ.get('SH_TOPIC_PREFIX_OVERRIDE') or 'spacehack'
+        return ''.join(c if c not in '\/.#$+_' else '-' for c in env_topic) + '/'
+
+class SpacehackFactory:
+    def mqtt_factory():
+        return MqttWrapperFactory(topic_prefix=SpacehackConfiguration.root_topic())
 
 class Service:
     def __init__(self):
@@ -47,9 +55,9 @@ class Service:
             self.await_init_done()
 
 class Lobby(Service):
-    def __init__(self, mqtt):
+    def __init__(self, mqtt_factory):
         super(Lobby, self).__init__()
-        self.mqtt = mqtt
+        self.mqtt = mqtt_factory.new()
 
     def handle_join(self, topic, payload):
         _, console, *_ = topic.split('/')
@@ -75,15 +83,15 @@ class Lobby(Service):
             if(self.gamestarter.should_start):
                 self.mqtt.pub('start', ','.join(self.gamestarter.joined_players))
                 self.gamestarter.reset()
+        self.mqtt.stop()
 
 class SpacehackHost:
-    def __init__(self, mqtt=MqttWrapper()):
-        self.mqtt = mqtt
-        self.lobby = Lobby(mqtt)
+    def __init__(self, mqtt_factory=SpacehackFactory.mqtt_factory()):
+        self.mqtt_factory=mqtt_factory
+        self.lobby = Lobby(self.mqtt_factory)
 
     def stop(self):
         self.lobby.stop()
-        self.mqtt.stop()
         self.lobby.wait(10.0)
 
     def start(self):

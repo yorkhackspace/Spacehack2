@@ -1,11 +1,12 @@
 # RUN: ./tbin/test_coverage.sh %s %t
 
 from libs.test_utils import TimeoutTest
-from host import Lobby, MqttWrapper
+from host import Lobby, SpacehackFactory
 
-l = Lobby(MqttWrapper())
+mqtt_factory = SpacehackFactory.mqtt_factory()
+l = Lobby(mqtt_factory)
 
-c = MqttWrapper()
+c = mqtt_factory.new()
 c.connect()
 
 test = TimeoutTest(10.0)

@@ -2,15 +2,18 @@ import os
 from functools import wraps
 from paho.mqtt import client as mqtt
 
+# I dunno Bart, my dad's a really big wheel down at the WrapperFactory
+class MqttWrapperFactory:
+    def __init__(self, address='localhost', port=1883, topic_prefix=''):
+        def new():
+            return MqttWrapper(address, port, topic_prefix)
+        self.new = new
+
 class MqttWrapper:
-    def __init__(self, address='localhost', port=1883, topic_prefix='spacehack/'):
+    def __init__(self, address, port, topic_prefix):
         self.address = address
         self.port = port
         self.topic_prefix = topic_prefix
-        override = 'SH_TOPIC_PREFIX_OVERRIDE'
-        if override in os.environ:
-            prefix = os.environ[override]
-            self.topic_prefix = ''.join(c if c not in '\/.#$+_' else '-' for c in os.environ[override]) + '/'
 
     def on_connect(self, client, userdata, flags, rc):
         print("connected to mqtt")
@@ -42,4 +45,3 @@ class MqttWrapper:
 
     def dump(self, topic, payload):
         print("%s: %s" % (topic, payload))
-
