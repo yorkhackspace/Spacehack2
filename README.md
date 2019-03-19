@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/yorkhackspace/Spacehack2Host.svg?branch=master)](https://travis-ci.org/yorkhackspace/Spacehack2Host)
-[![Coverage Status](https://coveralls.io/repos/github/yorkhackspace/Spacehack2Host/badge.svg?branch=master)](https://coveralls.io/github/yorkhackspace/Spacehack2Host?branch=master)
+[![Build Status](https://travis-ci.org/yorkhackspace/Spacehack2.svg?branch=master)](https://travis-ci.org/yorkhackspace/Spacehack2)
+[![Coverage Status](https://coveralls.io/repos/github/yorkhackspace/Spacehack2/badge.svg?branch=master)](https://coveralls.io/github/yorkhackspace/Spacehack2?branch=master)
 
 # Spacehack 2
 
