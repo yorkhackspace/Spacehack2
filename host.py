@@ -1,38 +1,29 @@
 #!/usr/bin/env python
-from mqtt_wrapper import MqttWrapperFactory
-import signal
+import os
 import sys
-from GameStarter import GameStarter
+import signal
 import time
+from mqtt_wrapper import MqttWrapperFactory
+from GameStarter import GameStarter
 from functools import wraps
 from threading import Event, Thread
-import os
 from services import Service
 
-class SpacehackConfiguration:
-    GAME_START_DELAY = 5.0
-    JOIN_GAME_DELAY = 1.0
-    LEAVE_GAME_DELAY = 0.5
-
-    def root_topic():
-        env_topic = os.environ.get('SH_TOPIC_PREFIX_OVERRIDE') or 'spacehack'
-        return ''.join(c if c not in '\/.#$+_' else '-' for c in env_topic) + '/'
-
 class SpacehackFactory:
-    def mqtt_factory():
-        return MqttWrapperFactory(topic_prefix=SpacehackConfiguration.root_topic())
+    def mqtt_factory(config):
+        return MqttWrapperFactory(topic_prefix=config['root_topic'])
 
-    def game_starter():
-        sc = SpacehackConfiguration
-        return GameStarter(sc.GAME_START_DELAY, sc.JOIN_GAME_DELAY, sc.LEAVE_GAME_DELAY)
+    def game_starter(config):
+        return GameStarter(config.get('game_start_delay', 5.0), config.get('game_join_delay', 1.0), config.get('game_leave_delay', 0.5))
 
-    def game_runner(game_subtopic, consoles):
-        return GameRunner(SpacehackFactory.mqtt_factory(), game_subtopic, consoles)
+    def game_runner(config, game_subtopic, consoles):
+        return GameRunner(SpacehackFactory.mqtt_factory(config), game_subtopic, consoles)
 
 class Lobby(Service):
-    def __init__(self, mqtt_factory):
+    def __init__(self, config, mqtt_factory):
         super(Lobby, self).__init__()
         self.mqtt = mqtt_factory.new()
+        self.config = config
         self.next_game_id = 0
 
     def get_next_game_id(self):
@@ -53,7 +44,7 @@ class Lobby(Service):
 
     def init(self):
         self.mqtt.connect()
-        self.gamestarter = SpacehackFactory.game_starter()
+        self.gamestarter = SpacehackFactory.game_starter(self.config)
         self.mqtt.sub('+/join', self.handle_join)
 
     def run(self):
@@ -62,7 +53,7 @@ class Lobby(Service):
             self.gamestarter.step_time(0.05)
             if(self.gamestarter.should_start):
                 game_id = self.get_next_game_id() 
-                SpacehackFactory.game_runner(game_id, self.gamestarter.joined_players)
+                SpacehackFactory.game_runner(self.config, game_id, self.gamestarter.joined_players)
                 self.mqtt.pub('start', ','.join([game_id, *self.gamestarter.joined_players]))
                 self.gamestarter.reset()
 
@@ -133,9 +124,12 @@ class GameRunner(Service):
         self.mqtt.stop()
 
 class SpacehackHost:
-    def __init__(self, mqtt_factory=SpacehackFactory.mqtt_factory()):
+    def __init__(self, config, mqtt_factory=None):
         self.mqtt_factory=mqtt_factory
-        self.lobby = Lobby(self.mqtt_factory)
+        if self.mqtt_factory is None:
+            self.mqtt_factory = SpacehackFactory.mqtt_factory(config)
+        self.config = config
+        self.lobby = Lobby(self.config, self.mqtt_factory)
 
     def stop(self):
         Service.stop_all()
@@ -149,7 +143,8 @@ class SpacehackHost:
 
 
 if __name__ == '__main__':
-    sh = SpacehackHost()
+    config = config.load('host_config.toml')
+    sh = SpacehackHost(config)
     def signal_handler(sig, frame):
         print('Exit')
         sh.stop()

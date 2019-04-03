@@ -2,9 +2,10 @@
 
 from libs.test_utils import TimeoutTest
 from host import Lobby, SpacehackFactory
+import config
 
-mqtt_factory = SpacehackFactory.mqtt_factory()
-l = Lobby(mqtt_factory)
+mqtt_factory = SpacehackFactory.mqtt_factory(config.build())
+l = Lobby(config.build(), mqtt_factory)
 
 c = mqtt_factory.new()
 c.connect()
