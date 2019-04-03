@@ -5,4 +5,4 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 export SH_TOPIC_PREFIX_OVERRIDE=$2
-coverage run --branch --append --source=host,mqtt_wrapper $1
+coverage run --branch --append --source=host,mqtt_wrapper,config,services $1
