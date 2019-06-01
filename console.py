@@ -1,5 +1,6 @@
 from mqtt_wrapper import MqttWrapperFactory
 from services import Service
+import random
 
 #TODO this file is not ready yet
 
@@ -55,3 +56,29 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     sh.start()
     sh.wait()
+
+class ControlPanel:
+    def __init__(self):
+        self.clear()
+
+    def clear(self):
+        self.components = []
+        self.busy_components = []
+
+    def add_component(self, component):
+        self.components.append(component)
+
+    def free_components(self):
+        busy = self.busy_components
+        return [c for c in self.components if c not in busy]
+
+    def get_component(self):
+        c = random.choice(self.free_components())
+        self.busy_components.append(component)
+
+    def release_component(self, component):
+        self.busy_components.remove(component)
+
+    def poll(self):
+        for c in self.components:
+            c.poll()
