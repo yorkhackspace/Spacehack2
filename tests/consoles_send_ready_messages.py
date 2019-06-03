@@ -4,46 +4,86 @@
 # This test is expected to fail for now, still working on console implementation
 
 from libs.test_utils import TimeoutTest
-from host import Lobby, SpacehackFactory
+from host import Lobby, HostFactory
+from console import ConsoleFactory
+from mock_hardware import MockButton
+import config
+from services import Service
 
-mqtt_factory = SpacehackFactory.mqtt_factory()
-l = Lobby(mqtt_factory)
+conf = config.build()
 
-c = mqtt_factory.new()
-c.connect()
+mqtt_factory = HostFactory.mqtt_factory(conf)
+
+# Create a lobby, some join buttons, and some joiners
+l = Lobby(conf, mqtt_factory)
+join_buttons = [MockButton({}) for i in range(2)]
+console_joiners = [ConsoleFactory.joiner(conf, join_buttons[i], "console_%d" % (i)) for i in range(2)]
+
+# connect test's mqtt listener
+m = mqtt_factory.new()
+m.connect()
 
 test = TimeoutTest(10.0)
 
-game_id = None
-consoles = None
-ready = []
+start_game_id = None
+start_consoles = []
+ready_game_ids = []
+ready_consoles = []
+
+# The consoles send ready messages and the host sends a game start message.
+# We need to check that these messages are all consistent.
+# This is done in this test a way that enable the messages to be processed
+# in any order. As long as the messages match.
+# check_pass_condition() checks if they match
+
+def check_pass_condition():
+    global start_game_id, start_consoles, ready_game_ids, ready_consoles
+    if (sorted(ready_consoles) == sorted(start_consoles) and
+            all(gid == start_game_id for gid in ready_game_ids)):
+        test.passed()
 
 def start(topic, payload):
     """ Handler for start topic messages """
-    global game_id, consoles, c
-    game_id, *consoles = payload.split(',')
-    assert len(consoles) == 2
-    c.stop()
-    c = mqtt_factory.new(game_id)
-    c.connect()
-    c.sub('ready', console_ready)
+    global start_game_id, start_consoles
+    start_game_id, *start_consoles = payload.split(',')
+    assert len(start_consoles) == 2
+    check_pass_condition()
     
 def console_ready(topic, payload):
-    print(topic, payload)
-    _, _, console, _ = topic.split(',')
-    global ready
-    ready.append(console)
-    if set(ready) == set(consoles):
-        test.passed()
+    """ Handler for ready topic messages """
+    global ready_game_ids, ready_consoles
+    _, game_id, console, _ = topic
+    ready_game_ids.append(game_id)
+    ready_consoles.append(console)
+    check_pass_condition()
+
+def startup():
+    # Start the loby
+    l.start()
+    # Start the console joiners
+    for joiner in console_joiners:
+        joiner.start()
+
+def mqtt_message(topic, payload):
+    if len(topic) >= 4:
+        root, game, console, subtopic, *tail = topic
+        if subtopic == 'ready' and tail == []:
+            console_ready(topic, payload)
 
 def act():
     # Register handler
-    c.sub('start', start)
+    m.sub('start', start)
+    m.sub('#', mqtt_message)
     l.await_init_done()
+    for joiner in console_joiners:
+        joiner.await_init_done()
     # Simulate players joining
-    l.wait(0.1)
-    # TODO
+    for button in join_buttons:
+        button.press()
+    l.wait(6.0)
+    for button in join_buttons:
+        button.release()
     test.await_completion()
-    l.stop()
+    Service.stop_all()
 
-test.run(l.start, act)
+test.run(startup, act)

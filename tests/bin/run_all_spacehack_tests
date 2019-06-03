@@ -9,7 +9,7 @@ if [ "$1" == "--help" ]; then
     echo "Usage:"
     echo -e "\t$0 [run_root] [-- <lit arguments>]"
     echo
-    echo "Where run_root is the name of the direcrtory containing the test suite in a subdirectory called '$subdir_name' (default '.')"
+    echo "Where run_root is the name of the directory containing the test suite in a subdirectory called '$subdir_name' (default '.')"
     exit 0
 fi
 

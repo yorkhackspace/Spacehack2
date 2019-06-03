@@ -1,53 +1,95 @@
+#!/usr/bin/env python
+import signal
 from mqtt_wrapper import MqttWrapperFactory
 from services import Service
+import config
 import random
 
-#TODO this file is not ready yet
+class ConsoleFactory:
+    def mqtt_factory(config):
+        return MqttWrapperFactory(topic_prefix=config['root_topic']+'/')
 
-class Lobby(Service):
-    def __init__(self, mqtt_factory, console_id):
-        super(Lobby, self).__init__()
-        self.mqtt = mqtt_factory.new()
-        self.game_id = None
+    def joiner(config, join_control, console_id):
+        return Joiner(ConsoleFactory.mqtt_factory(config), config, join_control, console_id)
+
+    def game_client(config, game_id, console_id):
+        return GameClient(ConsoleFactory.mqtt_factory(config), game_id, console_id)
+
+class GameClient(Service):
+    def __init__(self, mqtt_factory, game_id, console_id):
+        super(GameClient, self).__init__()
+        self.gid = game_id
         self.cid = console_id
-
-    def handle_start(self, topic, payload):
-        gid, *consoles = payload.split(',')
-        print('Game is starting with consoles %r: %s' % (consoles, self.game_id))
-        if self.cid in consoles:
-            # This is a game that I should join!
-            self.game_id = gid
-            self.mqtt.pub('/'.join([self.game_id, self.cid, 'ready']), 'ready')
-            # TODO start game service
+        self.mqtt = mqtt_factory.new('/'.join([self.gid, self.cid]))
 
     def init(self):
         self.mqtt.connect()
-        self.mqtt.sub('start', self.handle_start)
+        self.mqtt.pub('ready', 'ready')
 
     def run(self):
-        while(not self.stopped.isSet()):
+        pass
+
+class Joiner(Service):
+    def __init__(self, mqtt_factory, config, join_control, console_id):
+        super(Joiner, self).__init__()
+        self.config = config
+        self.gid = None
+        self.cid = console_id
+        self.mqtt = mqtt_factory.new(self.cid)
+        self.join_mqtt = mqtt_factory.new()
+        self.button = join_control
+
+    def start_game(self, topic, payload):
+        game_id, *joined_consoles = [s.strip() for s in payload.split(',')]
+        if self.cid in joined_consoles:
+            self.gid = game_id
+            ConsoleFactory.game_client(self.config, game_id, self.cid).start()
+
+    def init(self):
+        self.mqtt.connect()
+        self.join_mqtt.connect()
+        self.join_mqtt.sub('start', self.start_game)
+        self.button.set_callback(self.button_changed)
+        self.button.connect()
+
+    def button_changed(self, newstate):
+        if newstate in [0,1]:
+            self.mqtt.pub('/join', str(newstate))
+        else:
+            print("Warning: Unknown button state: %r" % (newstate))
+
+    def run(self):
+        # This service doesn't need to do anything in the main run function
+        # Just wait until the service is told to stop
+        self.stopped.wait()
 
     def cleanup(self):
         self.mqtt.stop()
 
 class SpacehackConsole:
-    def __init__(self, console_id, mqtt_factory=SpacehackFactory.mqtt_factory()):
+    def __init__(self, config, mqtt_factory=None):
         self.mqtt_factory=mqtt_factory
-        self.cid = console_id
-        self.lobby = Lobby(self.mqtt_factory, self.cid)
+        if self.mqtt_factory is None:
+            self.mqtt_factory = ConsoleFactory.mqtt_factory(config)
+        self.conf = config
+        self.cid = str(self.conf['id'])
+        
+        # TODO don't use None for the button, load details from config
+        self.joiner = Joiner(self.mqtt_factory, None, self.cid)
 
     def stop(self):
         Service.stop_all()
         Service.wait_all()
 
     def start(self):
-        self.lobby.start()
+        self.joiner.start()
 
     def wait(self):
         Service.wait_all()
 
 if __name__ == '__main__':
-    sh = SpacehackConsole()
+    config = config.load('console_config.toml')
+    sh = SpacehackConsole(config)
     def signal_handler(sig, frame):
         print('Exit')
         sh.stop()

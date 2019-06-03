@@ -1,4 +1,5 @@
 import os
+import toml
 
 class ConfigError(Exception):
     """ Thrown when something from a config file doesn't make sense """

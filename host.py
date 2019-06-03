@@ -9,7 +9,7 @@ from functools import wraps
 from threading import Event, Thread
 from services import Service
 
-class SpacehackFactory:
+class HostFactory:
     def mqtt_factory(config):
         return MqttWrapperFactory(topic_prefix=config['root_topic'])
 
@@ -17,7 +17,7 @@ class SpacehackFactory:
         return GameStarter(config.get('game_start_delay', 5.0), config.get('game_join_delay', 1.0), config.get('game_leave_delay', 0.5))
 
     def game_runner(config, game_subtopic, consoles):
-        return GameRunner(SpacehackFactory.mqtt_factory(config), game_subtopic, consoles)
+        return GameRunner(HostFactory.mqtt_factory(config), game_subtopic, consoles)
 
 class Lobby(Service):
     def __init__(self, config, mqtt_factory):
@@ -32,9 +32,8 @@ class Lobby(Service):
         return this_id
 
     def handle_join(self, topic, payload):
-        _, console, *_ = topic.split('/')
+        _, console, *_ = topic
         player = self.gamestarter.player(console)
-        print('Payload "%s" on "%s"' %(payload, topic))
         if payload == '1':
             player.push()
         elif payload == '0':
@@ -44,7 +43,7 @@ class Lobby(Service):
 
     def init(self):
         self.mqtt.connect()
-        self.gamestarter = SpacehackFactory.game_starter(self.config)
+        self.gamestarter = HostFactory.game_starter(self.config)
         self.mqtt.sub('+/join', self.handle_join)
 
     def run(self):
@@ -53,7 +52,7 @@ class Lobby(Service):
             self.gamestarter.step_time(0.05)
             if(self.gamestarter.should_start):
                 game_id = self.get_next_game_id() 
-                SpacehackFactory.game_runner(self.config, game_id, self.gamestarter.joined_players)
+                HostFactory.game_runner(self.config, game_id, self.gamestarter.joined_players).start()
                 self.mqtt.pub('start', ','.join([game_id, *self.gamestarter.joined_players]))
                 self.gamestarter.reset()
 
@@ -81,13 +80,12 @@ class GameRunner(Service):
         self.all_ready.set()
 
     def handle_console_ready(self, topic, payload):
-        print("Topic: %s" % (topic))
-        _, _, console, _ = topic.split('/')
+        _, _, console, _ = topic
         if payload != 'ready':
             return
-        if console not in self.read_consoles:
+        if console not in self.ready_consoles:
             self.ready_consoles.append(console)
-        if all(c in ready_consoles for c in self.consoles):
+        if all(c in self.ready_consoles for c in self.consoles):
             self.all_ready.set()
 
     def init(self):
@@ -97,7 +95,7 @@ class GameRunner(Service):
     def start_next_round(self):
         # Replace mqtt instance with new one for this round
         self.mqtt.stop()
-        self.mqtt = self.mqtt_factory.new('/'.join(self.game_subtopic, self.get_next_round_id()))
+        self.mqtt = self.mqtt_factory.new('/'.join([self.game_subtopic, self.get_next_round_id()]))
         self.mqtt.connect()
         # TODO sub to round-specific topics
         #self.mqtt.sub(thingy, handle_thingy)
@@ -127,7 +125,7 @@ class SpacehackHost:
     def __init__(self, config, mqtt_factory=None):
         self.mqtt_factory=mqtt_factory
         if self.mqtt_factory is None:
-            self.mqtt_factory = SpacehackFactory.mqtt_factory(config)
+            self.mqtt_factory = HostFactory.mqtt_factory(config)
         self.config = config
         self.lobby = Lobby(self.config, self.mqtt_factory)
 

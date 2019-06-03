@@ -1,12 +1,12 @@
 # RUN: ./tbin/test_coverage.sh %s %t
 
 from libs.test_utils import TimeoutTest
-from host import Lobby, SpacehackFactory
+from host import Lobby, HostFactory
 import config
 
 conf = config.build()
 
-mqtt_factory = SpacehackFactory.mqtt_factory(conf)
+mqtt_factory = HostFactory.mqtt_factory(conf)
 l = Lobby(conf, mqtt_factory)
 
 c = mqtt_factory.new()

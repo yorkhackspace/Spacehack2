@@ -9,6 +9,7 @@ class TimeoutTest:
         self.timeout = timeout
 
     def passed(self):
+        print("~#~ Test passed ~#~")
         self.success.set()
         self.complete.set()
         # This won't exit if it's in a thread
