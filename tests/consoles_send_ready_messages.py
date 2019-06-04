@@ -1,7 +1,4 @@
 # RUN: ./tbin/test_coverage.sh %s %t
-# XFAIL: *
-
-# This test is expected to fail for now, still working on console implementation
 
 from libs.test_utils import TimeoutTest
 from host import Lobby, HostFactory
@@ -84,6 +81,5 @@ def act():
     for button in join_buttons:
         button.release()
     test.await_completion()
-    Service.stop_all()
 
 test.run(startup, act)

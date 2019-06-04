@@ -79,3 +79,23 @@ class Service:
         self.svc_thread.start()
         if synchronous_init:
             self.await_init_done()
+
+    def start_subservice(self, s):
+        """ A service that starts other services should do so by calling
+        this function, to avoid funky race conditions when stopping services
+        that are about to launch other services """
+        # If we've been stopped since we last woke up, don't actually start
+        # this service.
+        if self.stopped.isSet():
+            raise StopService('Service Stopped')
+        # Start the service knowing we aren't stopped.
+        s.start()
+        # Now that the service is registered to be stopped if stop_all is called
+        # we check again, to see if we have been stopped since starting this
+        # subservice, we need to do this because we might have been stopped since
+        # we last checked, but before the sub service was registered.
+        if self.stopped.isSet():
+            s.stop()
+            s.wait()
+            raise StopService('Service Stopped')
+

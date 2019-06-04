@@ -29,6 +29,9 @@ class GameClient(Service):
     def run(self):
         pass
 
+    def cleanup(self):
+        self.mqtt.stop()
+
 class Joiner(Service):
     def __init__(self, mqtt_factory, config, join_control, console_id):
         super(Joiner, self).__init__()
@@ -43,7 +46,7 @@ class Joiner(Service):
         game_id, *joined_consoles = [s.strip() for s in payload.split(',')]
         if self.cid in joined_consoles:
             self.gid = game_id
-            ConsoleFactory.game_client(self.config, game_id, self.cid).start()
+            self.start_subservice(ConsoleFactory.game_client(self.config, game_id, self.cid))
 
     def init(self):
         self.mqtt.connect()
@@ -65,6 +68,7 @@ class Joiner(Service):
 
     def cleanup(self):
         self.mqtt.stop()
+        self.join_mqtt.stop()
 
 class SpacehackConsole:
     def __init__(self, config, mqtt_factory=None):

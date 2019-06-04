@@ -52,7 +52,7 @@ class Lobby(Service):
             self.gamestarter.step_time(0.05)
             if(self.gamestarter.should_start):
                 game_id = self.get_next_game_id() 
-                HostFactory.game_runner(self.config, game_id, self.gamestarter.joined_players).start()
+                self.start_subservice(HostFactory.game_runner(self.config, game_id, self.gamestarter.joined_players))
                 self.mqtt.pub('start', ','.join([game_id, *self.gamestarter.joined_players]))
                 self.gamestarter.reset()
 
@@ -76,7 +76,7 @@ class GameRunner(Service):
         self.next_round += 1
         return round_id
 
-    def intertupt(self):
+    def interrupt(self):
         self.all_ready.set()
 
     def handle_console_ready(self, topic, payload):

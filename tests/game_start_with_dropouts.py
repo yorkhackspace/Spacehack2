@@ -38,6 +38,5 @@ def act():
     l.wait(1.0)
     c.pub('3/join', '1')
     test.await_completion()
-    l.stop()
 
 test.run(l.start, act)

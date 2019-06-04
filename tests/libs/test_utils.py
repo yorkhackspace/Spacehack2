@@ -1,6 +1,7 @@
 from threading import Event, Thread
 import time
 import sys
+from services import Service
 
 class TimeoutTest:
     def __init__(self, timeout=30.0):
@@ -31,6 +32,7 @@ class TimeoutTest:
         timer.start()
 
         self.await_completion()
+        Service.stop_all()
 
         uut.join()
         act.join()
